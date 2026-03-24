@@ -1,3 +1,4 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
 fastapi
 uvicorn[standard]
 python-multipart
@@ -7,5 +8,5 @@ ultralytics
 opencv-python-headless
 numpy
 Pillow
-pyradiomics @ git+https://github.com/AIM-Harvard/pyradiomics    
-SimpleITK      
+SimpleITK
+pyradiomics @ git+https://github.com/AIM-Harvard/pyradiomics
