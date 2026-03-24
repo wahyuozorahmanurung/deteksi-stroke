@@ -1,17 +1,24 @@
 # Gunakan image Python yang ringan
 FROM python:3.10-slim
 
-# Install library sistem terbaru yang dibutuhkan
+# Install library sistem dan COMPILER yang dibutuhkan
 RUN apt-get update && apt-get install -y \
     libgl1 \
     libglib2.0-0 \
     libxcb1 \
     libx11-6 \
     git \
+    build-essential \
+    gcc \
+    g++ \
+    cmake \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
+
+# Upgrade pip untuk menghindari warning
+RUN pip install --upgrade pip
 
 # Copy requirements dan install
 COPY requirements.txt .
@@ -20,6 +27,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy seluruh kode aplikasi
 COPY . .
 
-# Pastikan port sesuai dengan setting Railway (8000)
-# Perhatikan nama file Anda 'main.py'
+# Jalankan aplikasi
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
