@@ -1,9 +1,9 @@
 # Gunakan image Python yang ringan
 FROM python:3.10-slim
 
-# Install library sistem yang dibutuhkan oleh OpenCV, SimpleITK, dan Radiomics
+# Install library sistem terbaru yang dibutuhkan
 RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     libxcb1 \
     libx11-6 \
@@ -20,5 +20,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy seluruh kode aplikasi
 COPY . .
 
-# Jalankan aplikasi (Sesuaikan jika nama file Anda 'main.py')
+# Pastikan port sesuai dengan setting Railway (8000)
+# Perhatikan nama file Anda 'main.py'
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
