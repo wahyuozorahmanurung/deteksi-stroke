@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+python-multipart
+scikit-learn
+joblib
+ultralytics
+opencv-python-headless
+numpy
+Pillow
+pyradiomics @ git+https://github.com/AIM-Harvard/pyradiomics    
+SimpleITK      
