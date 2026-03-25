@@ -21,7 +21,7 @@ class StrokeController extends Controller
             'file', 
             file_get_contents($image),
             $image->getClientOriginalName()
-        )->post('http://127.0.0.1:8000/predict'); // API 
+        )->post(env('API_URL_BACKEND', 'http://127.0.0.1:8000') . '/predict');
 
         $result = $response->json();
 
