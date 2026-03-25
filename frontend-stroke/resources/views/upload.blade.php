@@ -65,7 +65,7 @@
                     <p class="text-sm text-slate-500 mt-2">Format: JPG, PNG, DICOM (Max 5MB)</p>
                 </div>
 
-                <form action="{{ route('process.image') }}" method="POST" enctype="multipart/form-data" id="uploadForm">
+                <form action="{{ secure_url(route('process.image', [], false)) }}" method="POST" enctype="multipart/form-data" id="uploadForm">
                     @csrf
                     
                     <div class="relative group">
