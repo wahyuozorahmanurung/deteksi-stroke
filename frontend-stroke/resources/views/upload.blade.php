@@ -117,7 +117,7 @@
                 <div class="relative rounded-2xl overflow-hidden shadow-inner border border-slate-200 mb-6 bg-slate-900 aspect-square flex items-center justify-center">
                     <img src="data:image/jpeg;base64,{{ $result['image_with_box'] }}" alt="Hasil Deteksi" class="max-w-full max-h-full object-contain shadow-2xl">
                     <div class="absolute top-3 right-3">
-                        <span class="bg-primary/90 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg">AI Vision v1.0</span>
+                        <span class="bg-primary/90 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg">Stroke deteksi</span>
                     </div>
                 </div>
                 @endif
