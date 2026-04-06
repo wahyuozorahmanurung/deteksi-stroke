@@ -96,7 +96,37 @@ def extract_features(image_input: np.ndarray):
         logger.exception(f"⚠️ Feature extraction error: {e}")
         return pd.DataFrame(np.zeros((1, len(feature_columns))), columns=feature_columns)
 
-# --- PREDICT ENDPOINT ---
+def is_valid_brain_ct(image_cv):
+    try:
+        # 1. Konversi ke Grayscale jika belum
+        gray = cv2.cvtColor(image_cv, cv2.COLOR_BGR2GRAY) if image_cv.ndim == 3 else image_cv
+        
+        # 2. Cek Intensitas Cahaya (Filter gambar hitam pekat atau putih polos)
+        mean_val = np.mean(gray)
+        if mean_val < 10 or mean_val > 200:
+            return False, "Gambar terlalu gelap atau terlalu terang (Bukan CT Scan)."
+
+        # 3. Deteksi Struktur Tengkorak (Tulang biasanya memiliki intensitas > 180)
+        # Kita cari area putih yang membentuk lingkaran/oval
+        _, thresh = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
+        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        if len(contours) == 0:
+            return False, "Struktur tulang tengkorak tidak terdeteksi."
+
+        # 4. Cek Luas Objek Utama
+        max_cnt = max(contours, key=cv2.contourArea)
+        area_ratio = cv2.contourArea(max_cnt) / (gray.shape[0] * gray.shape[1])
+        
+        if area_ratio < 0.10: # Jika objek putih terlalu kecil (kurang dari 10%)
+            return False, "Objek terdeteksi terlalu kecil untuk sebuah CT Scan kepala."
+
+        return True, "Valid"
+    except Exception as e:
+        logger.error(f"Validation error: {e}")
+        return False, "Gagal memvalidasi format gambar."
+        
+--
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     if not yolo_model or not classifier_model:
@@ -106,16 +136,13 @@ async def predict(file: UploadFile = File(...)):
         contents = await file.read()
         filename = file.filename.lower()
 
-        # 1. KONVERSI DICOM KE JPG-LIKE FORMAT
+        # 1. KONVERSI FORMAT (Sama seperti kode lama kamu)
         if filename.endswith(('.dcm', '.dicom')):
             tmp_path = f"temp_{filename}"
             with open(tmp_path, "wb") as f: f.write(contents)
-            
             sitk_img = sitk.ReadImage(tmp_path)
             img_array = sitk.GetArrayFromImage(sitk_img)
             if len(img_array.shape) == 3: img_array = img_array[len(img_array)//2]
-            
-            # Terapkan Windowing agar stroke terlihat (PENTING!)
             processed_img = apply_windowing(img_array)
             image_cv = cv2.cvtColor(processed_img, cv2.COLOR_GRAY2BGR)
             os.remove(tmp_path)
@@ -123,8 +150,21 @@ async def predict(file: UploadFile = File(...)):
             pil_image = Image.open(io.BytesIO(contents)).convert("RGB")
             image_cv = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
 
+        # --- VALIDASI GAMBAR (TAMBAHAN BARU) ---
+        is_valid, msg = is_valid_brain_ct(image_cv)
+        if not is_valid:
+            # Jika tidak valid, langsung return tanpa jalankan YOLO/Radiomics
+            _, buffer = cv2.imencode('.jpg', image_cv)
+            image_base64 = base64.b64encode(buffer).decode('utf-8')
+            return {
+                "classification": "Bukan Brain CT",
+                "percentage": 0,
+                "decision_note": f"Validasi Gagal: {msg}",
+                "image_with_box": image_base64
+            }
         original_h, original_w = image_cv.shape[:2]
-
+        results = yolo_model(image_cv, verbose=False)
+--
         # 2. PROSES YOLO
         results = yolo_model(image_cv, verbose=False)
         is_stroke_yolo = len(results[0].boxes) > 0
