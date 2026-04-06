@@ -136,32 +136,88 @@ async def predict(file: UploadFile = File(...)):
         contents = await file.read()
         filename = file.filename.lower()
 
-        # 1. KONVERSI FORMAT (Sama seperti kode lama kamu)
+        # --- 1. KONVERSI ---
         if filename.endswith(('.dcm', '.dicom')):
             tmp_path = f"temp_{filename}"
             with open(tmp_path, "wb") as f: f.write(contents)
             sitk_img = sitk.ReadImage(tmp_path)
             img_array = sitk.GetArrayFromImage(sitk_img)
             if len(img_array.shape) == 3: img_array = img_array[len(img_array)//2]
-            processed_img = apply_windowing(img_array)
-            image_cv = cv2.cvtColor(processed_img, cv2.COLOR_GRAY2BGR)
+            image_cv = cv2.cvtColor(apply_windowing(img_array), cv2.COLOR_GRAY2BGR)
             os.remove(tmp_path)
         else:
             pil_image = Image.open(io.BytesIO(contents)).convert("RGB")
             image_cv = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
 
-        # --- VALIDASI GAMBAR (TAMBAHAN BARU) ---
+        # --- 2. VALIDASI  ---
         is_valid, msg = is_valid_brain_ct(image_cv)
         if not is_valid:
-            # Jika tidak valid, langsung return tanpa jalankan YOLO/Radiomics
             _, buffer = cv2.imencode('.jpg', image_cv)
-            image_base64 = base64.b64encode(buffer).decode('utf-8')
+            # Pastikan SEMUA KEY dikirim agar Laravel tidak "Unknown"
             return {
                 "classification": "Bukan Brain CT",
                 "percentage": 0,
-                "decision_note": f"Validasi Gagal: {msg}",
-                "image_with_box": image_base64
+                "decision_note": f"Input Ditolak: {msg}",
+                "image_with_box": base64.b64encode(buffer).decode('utf-8')
             }
+
+        # --- 3. PROSES YOLO ---
+        results = yolo_model(image_cv, verbose=False)
+        is_stroke_yolo = len(results[0].boxes) > 0
+        yolo_label, yolo_conf, bbox, roi_img = "Normal", 0.0, [], image_cv
+
+        if is_stroke_yolo:
+            best_box = results[0].boxes[int(np.argmax(results[0].boxes.conf.cpu().numpy()))]
+            yolo_conf = float(best_box.conf)
+            
+            # FILTER: Jika YOLO pun tidak yakin (misal < 25%), anggap bukan CT Scan medis
+            if yolo_conf < 0.25:
+                is_stroke_yolo = False 
+            else:
+                x1, y1, x2, y2 = map(int, best_box.xyxy[0].tolist())
+                bbox = [x1, y1, x2, y2]
+                yolo_label = yolo_model.names[int(best_box.cls[0].item())]
+                roi_img = image_cv[y1:y2, x1:x2] if image_cv[y1:y2, x1:x2].size > 0 else image_cv
+
+        # --- 4. RADIOMICS & ML ---
+        features_df = extract_features(roi_img)
+        probs = safe_get_ml_probabilities(classifier_model, features_df)
+        ml_class_idx = int(np.argmax(probs))
+        ml_class_name = label_encoder.inverse_transform([ml_class_idx])[0]
+        ml_confidence = float(probs[ml_class_idx])
+
+        # --- 5. FINAL DECISION (DI-PERKETAT) ---
+        # Jika Radiomics pun sangat ragu (< 40%) pada gambar yang sudah difilter
+        if ml_confidence < 0.40 and not is_stroke_yolo:
+            final_class = "Tidak Valid"
+            final_conf = round(ml_confidence * 100, 2)
+            reason = "Analisis tekstur meragukan, pastikan citra CT-Scan benar."
+        elif is_stroke_yolo and yolo_conf >= 0.3:
+            final_class = yolo_label.replace("Stroke ", "") if ml_class_name == "Normal" else ml_class_name
+            final_conf = round(max(yolo_conf, ml_confidence) * 100, 2)
+            reason = f"Terdeteksi oleh YOLO ({yolo_label})."
+        else:
+            final_class, final_conf = ml_class_name, round(ml_confidence * 100, 2)
+            reason = "Analisis Radiomics."
+
+        # --- 6. VISUALISASI ---
+        vis_image = image_cv.copy()
+        if final_class not in ["Normal", "Bukan Brain CT", "Tidak Valid"] and bbox:
+            cv2.rectangle(vis_image, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 3)
+            cv2.putText(vis_image, f"{final_class} {final_conf}%", (bbox[0], bbox[1]-10), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+
+        _, buffer = cv2.imencode('.jpg', vis_image)
+        return {
+            "classification": final_class,
+            "percentage": final_conf,
+            "decision_note": reason,
+            "image_with_box": base64.b64encode(buffer).decode('utf-8')
+        }
+
+    except Exception as e:
+        logger.exception("Error during prediction")
+        raise HTTPException(status_code=500, detail=str(e))
 
         # 2. PROSES YOLO
         results = yolo_model(image_cv, verbose=False)
