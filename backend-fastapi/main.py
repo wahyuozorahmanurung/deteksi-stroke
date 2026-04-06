@@ -126,7 +126,7 @@ def is_valid_brain_ct(image_cv):
         logger.error(f"Validation error: {e}")
         return False, "Gagal memvalidasi format gambar."
         
---
+
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     if not yolo_model or not classifier_model:
@@ -162,18 +162,12 @@ async def predict(file: UploadFile = File(...)):
                 "decision_note": f"Validasi Gagal: {msg}",
                 "image_with_box": image_base64
             }
-        original_h, original_w = image_cv.shape[:2]
-        results = yolo_model(image_cv, verbose=False)
---
+
         # 2. PROSES YOLO
         results = yolo_model(image_cv, verbose=False)
         is_stroke_yolo = len(results[0].boxes) > 0
+        yolo_label, yolo_conf, bbox, roi_img = "Normal", 0.0, [], image_cv
         
-        yolo_label = "Normal"
-        yolo_conf = 0.0
-        bbox = []
-        roi_img = image_cv
-
         if is_stroke_yolo:
             best_box = results[0].boxes[int(np.argmax(results[0].boxes.conf.cpu().numpy()))]
             x1, y1, x2, y2 = map(int, best_box.xyxy[0].tolist())
