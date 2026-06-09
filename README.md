@@ -108,41 +108,6 @@ The following classifiers were evaluated:
 
 ---
 
-## 🛠️ Technology Stack
-
-### Deep Learning
-
-* YOLOv11
-* PyTorch
-
-### Machine Learning
-
-* Scikit-learn
-* XGBoost
-
-### Radiomics
-
-* PyRadiomics
-* SimpleITK
-
-### Data Processing
-
-* NumPy
-* Pandas
-
-### Visualization
-
-* Matplotlib
-* Seaborn
-
-### Development Tools
-
-* Google Colab
-* Jupyter Notebook
-* Git
-* GitHub
-
----
 
 
 ## 🚀 Installation
