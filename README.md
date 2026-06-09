@@ -44,7 +44,7 @@ The study evaluates whether radiomics-based machine learning models can outperfo
 | Feature Extraction | Radiomics                         |
 | Output             | Stroke Classification             |
 
-> Replace with your actual dataset details.
+
 
 ---
 
@@ -152,33 +152,6 @@ The following classifiers were evaluated:
 
 ---
 
-## 📂 Project Structure
-
-```bash
-Stroke-Classification/
-│
-├── dataset/
-├── annotations/
-├── models/
-├── notebooks/
-├── radiomics/
-├── results/
-├── images/
-│
-├── src/
-│   ├── detection/
-│   ├── feature_extraction/
-│   ├── classification/
-│   └── evaluation/
-│
-├── train_yolo.py
-├── extract_features.py
-├── train_classifier.py
-├── requirements.txt
-└── README.md
-```
-
----
 
 ## 🚀 Installation
 
@@ -190,30 +163,6 @@ cd stroke-classification
 pip install -r requirements.txt
 ```
 
----
-
-## 🏋️ Model Training
-
-### YOLOv11 Training
-
-```bash
-yolo detect train \
-data=data.yaml \
-model=yolo11n.pt \
-epochs=100
-```
-
-### Feature Extraction
-
-```bash
-python extract_features.py
-```
-
-### Classification Training
-
-```bash
-python train_classifier.py
-```
 
 ---
 
