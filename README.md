@@ -92,12 +92,7 @@ Medical Images
 The extracted features include:
 
 * First-Order Statistics
-* Shape Features
 * Texture Features
-* GLCM
-* GLRLM
-* GLSZM
-* Wavelet Features
 
 ---
 
@@ -108,11 +103,8 @@ The following classifiers were evaluated:
 | Model                        |
 | ---------------------------- |
 | Random Forest                |
-| XGBoost                      |
 | Support Vector Machine (SVM) |
-| Logistic Regression          |
-| Decision Tree                |
-| K-Nearest Neighbors (KNN)    |
+| Naive Bayes    |
 
 ---
 
